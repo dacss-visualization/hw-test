@@ -1,0 +1,317 @@
+---
+title: "DACSS604_final"
+author: "Delaney Parke"
+date: "2025-05-07"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#loading library
+library(httr)  
+library(rvest)
+library(tidyverse)
+library(dplyr)
+library(purrr)
+library(readr)
+library(pdftools)
+library(readxl)
+library(haven)
+library(stringr)
+library(lubridate)
+library(readxl)
+library(stringr)
+library(ggplot2)
+library(maps)
+library(sf)
+library(plotly)
+library(gifski)
+library(gganimate)
+library(lubridate)
+```
+
+```{r}
+#reading in met dataset
+met <- read.csv("Met.csv", header=T, na.strings="")
+```
+
+```{r}
+#removing unnecessary columns
+met_drop <- met |>
+  select(-c("Is.Highlight", "Is.Timeline.Work", "Is.Public.Domain", "Object.ID", "Object.Number", "Object.Name", "Department", "Gallery.Number", "Culture", "Period", "Dynasty", "Reign", "Portfolio", "Constituent.ID", "Artist.Role", "Artist.Prefix", "Artist.Display.Bio", "Artist.Suffix", "Artist.Alpha.Sort", "Artist.Nationality", "Artist.Begin.Date", "Artist.End.Date", "Artist.ULAN.URL", "Medium", "Dimensions", "City", "Geography.Type", "Tags.Wikidata.URL", "Tags.AAT.URL", "Tags", "Repository", "Metadata.Date", "Object.Wikidata.URL", "Rights.and.Reproduction", "River", "Excavation", "Classification", "Locus", "Locale", "Subregion", "Region", "County", "State", "Object.Begin.Date", "Object.End.Date", "Country", "Link.Resource", "Object.Date", "Credit.Line"))
+
+#rename columns 
+met_rename <- met_drop |>
+  rename(c(acquisition_year = AccessionYear, title = Title, artist = Artist.Display.Name, gender = Artist.Gender, artist_wiki = Artist.Wikidata.URL))
+
+#filter out NA values in artist and acquisition date columns
+met_filter <- met_rename |>
+  filter(!is.na(artist), !is.na(acquisition_year), !is.na(artist_wiki))
+
+#identify unique variables in gender column
+met_filter |>
+  distinct(gender) 
+
+#gender column too messy to salvage, will use artist_link column for qid codes
+met_select <- met_filter |>
+  select(-gender)
+```
+```{r}
+#extract qid codes and create new column artist_qid
+met_select <- met_select |>
+  mutate(artist_qid = str_extract(artist_wiki, "Q[0-9]+"))
+
+#exclude NA values
+met_qid <- met_select |>
+  filter(!is.na(artist_qid))
+
+#sanity checks
+head(met_qid)
+tail(met_qid)
+
+#keep only artist_qid values that are exactly one qid
+met_qid_clean <- met_qid |>
+  filter(str_detect(artist_qid, "^Q[0-9]+$"))
+```
+
+```{r}
+#get unique qids
+unique_qids <- unique(met_qid_clean$artist_qid)
+
+#save to csv
+write.csv(data.frame(artist_qid = unique_qids), "unique_artist_qids.csv", row.names = FALSE)
+
+#read in dataset of artist data taken from qids and pulled from wikidata
+gender <- read.csv("query.csv")
+
+#sanity check
+head(gender)
+
+#extract qid from person column and create artist_qid column
+gender_select <- gender |>
+  mutate(artist_qid = str_extract(person, "Q[0-9]+"))
+
+#sanity check
+head(gender_select)
+
+#merge main dataset with gender dataset
+met_merged <-  gender_select |>
+  left_join(met_qid_clean, by = "artist_qid")
+
+#sanity check 
+head(met_merged)
+
+#renaming gender column for consistency
+met_merged <- met_merged |>
+  rename(gender = genderLabel)
+
+#dropping unnecessary columns
+met_final <- met_merged |>
+  select(-c(person, artist_wiki)) 
+
+#turn acquistion year column into numeric
+met_final$acquisition_year <- as.numeric(met_final$acquisition_year)
+
+#sanity check
+head(met_final)
+
+#checking gender values
+unique(met_final$gender)
+
+#cleaning the gender column in the 'met_final' dataframe
+met_final$gender_clean <- ifelse(grepl("^http", met_final$gender), NA, met_final$gender)
+
+#checking the unique values in the cleaned gender column, excluding NA values
+unique(na.omit(met_final$gender_clean))
+```
+
+```{r}
+#reading in file
+moma <- read.csv("MOMA.csv", header=T, na.strings="")
+
+#check
+head(moma)
+
+#removing unnecessary columns
+moma_drop <- moma |>
+  select(-c("ArtistBio", "Nationality", "BeginDate", "EndDate", "Date", "Medium", "Dimensions", "CreditLine", "Department", "Classification", "AccessionNumber", "Cataloged", "ObjectID", "URL", "ImageURL", "OnView", "Circumference..cm.", "Diameter..cm.", "Height..cm.", "Length..cm.", "Weight..kg.", "Width..cm.", "Depth..cm.", "Seat.Height..cm.", "Duration..sec.."))
+
+#rename columns 
+moma_rename <- moma_drop |>
+  rename(c(acquisition_date = DateAcquired, title = Title, artist = Artist, gender = Gender, id = ConstituentID))
+
+head(moma_rename)
+
+#extracting gender to remove ( ) and creating new column 
+moma_select <- moma_rename |>
+  mutate(gender_new = str_remove_all(gender, "[()]"))
+
+#removing gender column that includes ( )
+moma_gen <- moma_select |>
+  select(-gender) 
+
+#renaming new gender column
+moma_gen <-moma_gen |>
+  rename(gender = gender_new)
+
+
+#changing acquisition_date column into year month date format and keeping only year
+moma_year <- moma_gen |>
+   mutate(acquisition_date = ymd(acquisition_date),
+          acquisition_year = year(acquisition_date))
+
+#dropping acquisition date column
+moma_year <- moma_year |>
+  select(-acquisition_date) 
+
+#sanity check
+head(moma_year)
+
+#reading in additional file of moma artists
+moma_artists <- read.csv("artists_moma.csv", header=T, na.strings="")
+
+#dropping unnecessary columns
+moma_artists <- moma_artists |>
+  select(-c(ULAN, EndDate, BeginDate, Nationality, ArtistBio))
+
+#renaming columns
+moma_artists <- moma_artists |>
+    rename(c(artist_qid = Wiki.QID, artist = DisplayName, gender = Gender, id = ConstituentID))
+
+#removing NA values from qid column  
+moma_artists <- moma_artists |>
+  filter(!is.na(artist_qid))
+
+#changing id column from integer to character
+moma_artists$id <- as.character(moma_artists$id)
+  
+#sanity check
+head(moma_artists)
+
+#merge main dataset with id dataset
+moma_merged <-  moma_year |>
+  left_join(moma_artists, by = "id")
+
+#dropping duplicate columns
+moma_merged <- moma_merged |>
+  select(-c(artist.x, gender.x)) |>
+  rename(artist = artist.y, gender = gender.y)
+
+#sanity check 
+head(moma_merged)
+
+#dropping unnecessary columns
+moma_final <- moma_merged |>
+  select(-id)
+
+head(moma_final)
+
+#checking gender values
+unique(moma_final$gender)
+```
+
+```{r}
+#add museum column to both datasets
+moma_final$museum <- "moma"
+met_final$museum <- "met"
+
+#identifying columns
+cols_to_check <- c("gender", "artist", "acquisition_year", "title")
+
+#filtering for NA values
+moma_clean <- moma_final |>
+  filter(if_all(all_of(cols_to_check), ~ !is.na(.)))
+
+#sanity check
+head(moma_clean)
+
+#identifying columns
+cols_to_check <- c("gender", "artist", "acquisition_year", "title")
+
+#filtering for NA values
+met_clean <- met_final |>
+  filter(if_all(all_of(cols_to_check), ~ !is.na(.)))
+
+head(met_clean)
+
+#dropping gender column
+met_clean <- met_clean |>
+  select(-gender) |>
+  rename(gender = gender_clean)
+
+#combining datasets
+combined_museum <- bind_rows(moma_clean, met_clean)
+
+#sanity check
+head(combined_museum)
+tail(combined_museum)
+
+#checking gender values
+unique(combined_museum$gender)
+
+#remove NA values
+combined_museum <- combined_museum |>
+  filter(!is.na(gender))
+
+#checking gender values
+unique(combined_museum$gender)
+
+#check table
+table(combined_museum$museum)
+```
+
+```{r}
+#create decade column 
+combined_museum$decade <- floor(combined_museum$acquisition_year / 10) * 10
+
+#sanity check
+head(combined_museum)
+```
+
+```{r}
+combined_museum |>
+  group_by(museum, gender) |>
+  summarize(count = n()) |>
+  mutate(percent = round(100 * count / sum(count), 1))
+
+
+combined_museum |>
+  filter(!is.na(gender), gender == "female") |>
+  group_by(museum, acquisition_year) |>
+  summarize(female_acquisitions = n()) |>
+  arrange(acquisition_year)
+
+
+combined_museum |>
+  filter(!is.na(gender)) |>
+  group_by(museum, acquisition_year) |>
+  summarize(
+    total = n(),
+    female = sum(gender == "female")
+  ) |>
+  mutate(prop_female = female / total)
+
+```
+
+```{r}
+yearly_summary <- combined_museum |>
+  filter(!is.na(gender)) |>
+  group_by(museum, acquisition_year) |>
+  summarize(
+    total = n(),
+    female = sum(gender == "female")
+  ) |>
+  mutate(prop_female = female / total)
+
+#run regression model
+model <- lm(prop_female ~ acquisition_year + museum, data = yearly_summary)
+
+summary(model)
+
+unique(yearly_summary$museum)
+
+```
