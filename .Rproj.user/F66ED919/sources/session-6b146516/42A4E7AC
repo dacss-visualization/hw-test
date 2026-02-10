@@ -1,12 +1,12 @@
 {
-    "id": "441F16E8",
+    "id": "42A4E7AC",
     "path": "C:/Users/Delaney/Desktop/DACSS 690V/hw-test/codesForDrafts.R",
-    "project_path": null,
+    "project_path": "codesForDrafts.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1770690962370.0,
+    "created": 1770693060080.0,
     "source_on_save": false,
     "relative_order": 1,
     "properties": {
@@ -20,7 +20,7 @@
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1770691559656,
+    "last_content_update": 1770691559,
     "read_only": false,
     "read_only_alternatives": []
 }
