@@ -20,8 +20,8 @@ Preparing the dashboard based on the instructions given at @magallanes_reyes_dat
 
 ```{r}
 ## for del1Draft.rds
-link1="https://github.com/dacss-visualization/hw-test/raw/main/del1Draft.rds"
-readRDS(url(link1))
+link1="https://github.com/dacss-visualization/hw-test/raw/main/delDraft.rds"
+readRDS(url(link2))
 ```
 
 

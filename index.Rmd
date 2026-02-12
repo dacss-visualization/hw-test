@@ -44,5 +44,3 @@ readRDS(url(link2))
 link3="https://github.com/dacss-visualization/hw-test/raw/main/del3Draft.rds"
 readRDS(url(link3))
 ```
-
-
