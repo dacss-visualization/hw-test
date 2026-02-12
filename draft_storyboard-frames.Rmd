@@ -1,25 +1,22 @@
 ---
-title: "My Dashbord at DACSS"
+title: "My Storyboard at DACSS - frames"
 bibliography: testVisual.bib
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
+    storyboard: true
 ---
 
 ```{r setup, include=FALSE}
-library(flexdashboard) # always
+library(flexdashboard) # alwaysS
 ```
 
 ## Intro {.sidebar}
 
 Preparing the dashboard based on the instructions given at @magallanes_reyes_data_2022, and @aden-buie_flexdashboard_2026.
 
-### References
-<div id="refs"></div>
 
-## Column {data-width="450"}
+### I know this is not nice, but wait till I finish the course
 
-### Worst barplot <!-- Example Barplot -->
 
 ```{r}
 ## for del1Draft.rds
@@ -27,7 +24,9 @@ link1="https://github.com/dacss-visualization/hw-test/raw/main/del1Draft.rds"
 readRDS(url(link1))
 ```
 
-### Worst histogram 
+
+
+### I am doing my best but still much to learn
 
 ```{r}
 ## for del2Draft.rds
@@ -35,9 +34,8 @@ link2="https://github.com/dacss-visualization/hw-test/raw/main/del2Draft.rds"
 readRDS(url(link2))
 ```
 
-## Column {data-width="550"}
 
-### Worst scatterplot
+### This might be the worst plot, but...
 
 ```{r}
 ## for del3Draft.rds
@@ -46,3 +44,5 @@ readRDS(url(link3))
 ```
 
 
+### References
+<div id="refs"></div>
